@@ -1,12 +1,7 @@
 import boto3
 import sh
 import os
-import botocore_amazon.monkeypatch
 from botocore.client import ClientError
-
-GIT_ROOT = sh.git("rev-parse", "--show-toplevel").strip()
-new_env = os.environ.copy()
-os.environ["AWS_CONFIG_FILE"] = f'{GIT_ROOT}/aws.cfg'
 
 class IamConnection:
 
@@ -70,8 +65,7 @@ class IamConnection:
         self.password = cluster_creds['password']
         self.username = cluster_creds['username']
         self.hostname = cluster_info['hostname']
-        #self.hostname_plus_port = cluster_info['hostname'] + ':' + cluster_info['port']
-        self.hostname_plus_port = '34.196.76.41'+ ':' + cluster_info['port']
+        self.hostname_plus_port = cluster_info['hostname'] + ':' + cluster_info['port']
         self.port = cluster_info['port']
         self.iamrole = cluster_info['iamrole']
         self.db = cluster_info['db-name']
