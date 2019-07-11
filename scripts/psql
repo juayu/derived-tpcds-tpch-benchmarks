@@ -1,0 +1,82 @@
+#!/bin/bash
+
+if [  -z "$PGCONNECT_TIMEOUT"  ]; then 
+	export PGCONNECT_TIMEOUT=10
+fi
+
+isIAM=true
+
+
+if [[ "$*" == *'--no-iam'* ]] ; then 
+	args="$*"
+	cmd="psql ${args//--no-iam/}"
+    exec $cmd
+	exit 0
+else
+
+
+# TODO: reduce number of describe calls, pass full describe output to jq and then handle parsing logic client side 
+redshiftTags=$(aws redshift describe-clusters --query "Clusters[*].[[Tags[?Key=='master-user'].Value],[Tags[?Key=='stack-name'].Value],[Tags[?Key=='db-name'].Value],[Tags[?Key=='port'].Value]]" --output text)
+
+redshiftTagArray=(${redshiftTags// / })
+userName=${redshiftTagArray[0]}
+clusterIdentifier=${redshiftTagArray[1]}
+database=${redshiftTagArray[2]}
+port=${redshiftTagArray[3]}
+
+
+hostName=$(aws redshift describe-clusters --cluster-identifier $clusterIdentifier --query 'Clusters[*].Endpoint.Address' --output text)
+
+# TODO: add checks if connection attributes changed versus tagging 
+# TODO: Support all psql arguments. Easiest to just strip away authentication parameters all of the time (except for --no-iam) and then just append arguments ( $* )
+# will still need to ta still assign hostname arg to a variable for use in looking up cluster identifier 
+
+                while [ "$#" -gt 0 ]; do
+                  case "$1" in
+                        -h) hostName="$2"; shift 2;;
+                        -U) userName="$2"; shift 2;;
+                        -d) database="$2"; shift 2;;
+                        -p) port="$2"; shift 2;;
+                        -f) file="$2"; shift 2;;
+                        -c) cmd=""$2""; shift 2;;
+                        -t) tuples="-t"; shift 1;;
+
+                        --host=*) hostName="${1#*=}"; shift 1;;
+                        --userName=*) userName="${1#*=}"; shift 1;;
+                        --dbName=*) database="${1#*=}"; shift 1;;
+                        --port=*) port="${1#*=}"; shift 1;;
+                        --file=*) file="${1#*=}"; shift 1;;
+                        --command=*) cmd=""${1#*=}""; shift 1;;
+                        --tuples-only) tuples="-t"; shift 1;;
+                        --host|--userName|--database|--port|--command|--tuples-only) echo "$1 requires an argument" >&2; exit 1;;
+
+                        -*) echo "unknown option: $1" >&2; exit 1;;
+                        #  other parameters get captured here  *) do whatever with $1; shift 1;;
+                  esac
+                done
+
+clusterIdentifier=${hostName%%.*}
+
+credstring=$(./getclustercredentials.py $userName $clusterIdentifier $database)
+
+IFS=' ' read -a arr <<< "$credstring"
+iamUser=${arr[0]}
+
+                if [  "$iamUser" == "ERROR:"  ]; then
+                        # print out error string passed from ClientError response
+                        echo $credstring
+                else
+                        export PGPASSWORD=${arr[1]};
+
+                        if [ -z "$file" ] && [ -z "$cmd" ]; then
+                            psql -h $hostName -p $port -d $database -U $iamUser $tuples
+                        elif [ ! -z "$file" ]  && [ -z "$cmd" ]; then
+							echo "2"
+                            psql -h $hostName -p $port -d $database -U $iamUser --file="$file" $tuples
+						elif [ -z "$file" ] && [ ! -z "$cmd" ]; then
+                            psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" $tuples 
+						else
+                            psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" --file="$file" $tuples
+						fi
+                fi
+fi
