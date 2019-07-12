@@ -5,11 +5,11 @@ try:
     import botocore_amazon.monkeypatch
     is_amzn = True
 except:
-    pass
+    is_amzn = False
 
 from botocore.client import ClientError
 
-if is_amzn is not None:
+if is_amzn is True:
     GIT_ROOT = sh.git("rev-parse", "--show-toplevel").strip()
     new_env = os.environ.copy()
     os.environ["AWS_CONFIG_FILE"] = f'{GIT_ROOT}/aws.cfg'
@@ -78,7 +78,7 @@ class IamConnection:
         self.username = cluster_creds['username']
         self.hostname = cluster_info['hostname']
         self.port = cluster_info['port']
-        if is_amzn is not None:
+        if is_amzn is True:
             self.hostname = '34.196.76.41'
         self.hostname_plus_port = f'{self.hostname}:{self.port}'
         self.port = cluster_info['port']
