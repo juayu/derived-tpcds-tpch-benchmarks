@@ -1,7 +1,18 @@
 import boto3
 import sh
 import os
+try:
+    import botocore_amazon.monkeypatch
+    is_amzn = True
+except:
+    pass
+
 from botocore.client import ClientError
+
+if is_amzn is not None:
+    GIT_ROOT = sh.git("rev-parse", "--show-toplevel").strip()
+    new_env = os.environ.copy()
+    os.environ["AWS_CONFIG_FILE"] = f'{GIT_ROOT}/aws.cfg'
 
 class IamConnection:
 
@@ -14,7 +25,7 @@ class IamConnection:
         """
         try:
             client = session.client("redshift")
-            response = client.describe_clusters(TagKeys=['tpcds','tpch','port','stack-name'])
+            response = client.describe_clusters(TagKeys=['tpcds','tpch','port','stack_name'])
             hostname = response['Clusters'][0]['Endpoint']['Address']
             iamrole = response['Clusters'][0]['IamRoles'][0]['IamRoleArn']
             tags = response['Clusters'][0]['Tags']
@@ -48,6 +59,7 @@ class IamConnection:
                 AutoCreate=False
             )
             creds = {'username': response['DbUser'], 'password': response['DbPassword']}
+
             return(creds)
         except ClientError as e:
             if e.response['Error']['Code'] == 'UnsupportedOperation':
@@ -60,16 +72,19 @@ class IamConnection:
     def __init__(self):
         session = boto3.session.Session()
         cluster_info = self.__get_cluster_info(session)
-        cluster_creds = self.__get_cluster_credentials(session, cluster_info["stack-name"], cluster_info["master-user"],
-                                             cluster_info["db-name"])
+        cluster_creds = self.__get_cluster_credentials(session, cluster_info["stack_name"], cluster_info["master_user"],
+                                             cluster_info["db_name"])
         self.password = cluster_creds['password']
         self.username = cluster_creds['username']
         self.hostname = cluster_info['hostname']
-        self.hostname_plus_port = cluster_info['hostname'] + ':' + cluster_info['port']
+        self.port = cluster_info['port']
+        if is_amzn is not None:
+            self.hostname = '34.196.76.41'
+        self.hostname_plus_port = f'{self.hostname}:{self.port}'
         self.port = cluster_info['port']
         self.iamrole = cluster_info['iamrole']
-        self.db = cluster_info['db-name']
+        self.db = cluster_info['db_name']
         self.tpcds = cluster_info['tpcds']
         self.tpch = cluster_info['tpch']
-        self.tpcds_autorun = cluster_info['autorun-tpcds']
-        self.tpch_autorun = cluster_info['autorun-tpch']
+        self.tpcds_autorun = cluster_info['autorun_tpcds']
+        self.tpch_autorun = cluster_info['autorun_tpch']

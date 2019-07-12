@@ -1,4 +1,0 @@
-sh==1.12.14
-python-daemon==2.2.3
-PyGreSQL==5.1
-lockfile==0.12.2

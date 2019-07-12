@@ -1,10 +1,12 @@
 import multiprocessing as mp
+import os
+import time
 from iamconnectioninfo import IamConnection
 from pgdb import connect
 
 def autorun_tpcds(iamconnectioninfo, working_dir):
 
-    if iamconnectioninfo.tpcds_autorun == 'True' and iamconnectioninfo.tpcds == '':
+    if iamconnectioninfopcds_autorun and iamconnectioninfo.tpcds == '':
         tpcds_sql = open(working_dir + 'tpcds-queries.sql', 'r')
         schema = 'tpcds_{}'.format(iamconnectioninfo.tpch)
         with connect(database=iamconnectioninfo.db, host=iamconnectioninfo.hostname_plus_port,
@@ -19,7 +21,7 @@ def autorun_tpcds(iamconnectioninfo, working_dir):
 
 def autorun_tpch(iamconnectioninfo, working_dir):
 
-    if iamconnectioninfo.tpch_autorun == 'True' and iamconnectioninfo.tpch != '':
+    if iamconnectioninfo.tpch_autorun and iamconnectioninfo.tpch != '':
         tpch_sql = open(working_dir + 'tpcds-queries.sql', 'r')
         schema = 'tpcds_{}'.format(iamconnectioninfo.tpch)
         with connect(database=iamconnectioninfo.db, host=iamconnectioninfo.hostname_plus_port,
@@ -62,9 +64,9 @@ def load_ddl(iamconnectioninfo, working_dir):
 
 def load_tpcds(num_worker_process):
     tpcds_table_list = ['store_sales', 'catalog_sales', 'web_sales', 'web_returns', 'store_returns', 'catalog_returns',
-                        'call_center', 'catalog_page', 'customer_address', 'customer', 'customer_demographics', 'date_dim',
-                        'household_demographics', 'income_band', 'inventory', 'item', 'promotion', 'reason', 'ship_mode',
-                        'store', 'time_dim', 'warehouse', 'web_page', 'web_site']
+                        'call_center', 'catalog_page', 'customer_address', 'customer', 'customer_demographics',
+                        'date_dim','household_demographics', 'income_band', 'inventory', 'item', 'promotion', 'reason',
+                        'ship_mode','store', 'time_dim', 'warehouse', 'web_page', 'web_site']
 
     tpcds_table_queue = mp.JoinableQueue()
     for tbl in tpcds_table_list:
@@ -144,8 +146,16 @@ def load_worker(queue, data_set):
 if __name__=='__main__':
 
     iamconnectioninfo = IamConnection()
-    working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/'
-    #working_dir = '/Users/bschur/derived-tpcds-tpch-benchmarks/'
+
+    # local env for development
+    if not os.path.exists('/Users/bschur/derived-tpcds-tpch-benchmarks/'):
+        working_dir = '/Users/bschur/derived-tpcds-tpch-benchmarks/'
+
+    # Make sure that needed scripts are done being pulled
+    if working_dir is None:
+        working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/'
+        while os.path.exists(f'{working_dir}tpcds-ddl.sql') is False:
+            time.sleep(2)
 
     # load DDL
     load_ddl(iamconnectioninfo, working_dir)
@@ -159,13 +169,5 @@ if __name__=='__main__':
     # autorun tpcds
     tpcds_pid = autorun_tpcds(iamconnectioninfo, working_dir)
 
-    # if tpcds_pid is not None:
-    #     # update postgres
-    #
-    # # autorun tpch
-    # tpch_pid = autorun_tpch(iamconnectioninfo, working_dir)
-    #
-    # if tpch_pid is not None:
-    #     # update postgres
-    #
-    # SNS NOTIFY
+    # autorun tpch
+    tpch_pid = autorun_tpcdh(iamconnectioninfo, working_dir)

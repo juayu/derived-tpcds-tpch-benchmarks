@@ -1,40 +1,29 @@
 #!/usr/bin/python3
 
 import socket
-import sys, json
+import argparse
+from voluptuous import Schema, Required, All, Length, MultipleInvalid
 
-def is_valid_json(myjson):
-  try:
-    json.loads(myjson)
-  except ValueError:
-    return False
-  return True
+schema = Schema({
+  Required('json'): All(str, Length(min=1))
+})
 
-if len(sys.argv) != 2:
-  print("Requires single argument which is the runner_functionion name in the query runner. Arguments can be passed to stdin as json")
-  exit(1)
+parser = argparse.ArgumentParser()
+parser.add_argument('--json', help='Please provide a single json object. TODO: Required attributes in the json/reference goes here', required=True)
+json_conf = vars(parser.parse_args())
 
-json_arg=''
-# Verify is stdin exists
-is_not_stdin = sys.stdin.isatty()
-if is_not_stdin is False:
-  json_arg = sys.stdin.read()
-
-
-if is_valid_json(json_arg) is False and is_not_stdin is False:
-  print('Invalid Json passed to stdin')
-  print(json_arg)
-  exit(1)
-
-runner_function = str(sys.argv[1]+'|')
+try:
+  schema(json_conf)
+except MultipleInvalid as e:
+    raise e
 
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-s.connect('./queryrunner.socket')
+path = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts'
+if not os.path.exists(path):
+    path = 'Users/bschur/RedshiftGoldStandard/scripts'
 
-if is_not_stdin is False:
-  s.send(runner_function.encode('UTF-8'))
-else:
-  s.send(runner_function.encode('UTF-8'))
-  s.send(json_arg.encode('UTF-8'))
+s.connect(f'{path}/queryrunner.socket')
+
+s.send(json_conf['json'].encode('UTF-8'))
 
 s.close()

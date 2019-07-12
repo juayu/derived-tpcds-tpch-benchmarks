@@ -91,4 +91,3 @@ create table if not exists supplier (
   Primary Key(S_SUPPKEY)
 ) distkey(s_suppkey) sortkey(s_suppkey)
 ;
-
