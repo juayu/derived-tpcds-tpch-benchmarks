@@ -148,15 +148,13 @@ if __name__=='__main__':
     iamconnectioninfo = IamConnection()
 
     # local env for development
-    working_dir = False
+    working_dir = ''
     if os.path.exists('/Users/bschur/derived-tpcds-tpch-benchmarks/'):
         working_dir = '/Users/bschur/derived-tpcds-tpch-benchmarks/'
 
     # Make sure that needed scripts are done being pulled
-    if working_dir is False:
+    if working_dir == '':
         working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/'
-        while os.path.exists(f'{working_dir}tpcds-ddl.sql') is False:
-            time.sleep(1)
 
     # load DDL
     load_ddl(iamconnectioninfo, working_dir)
