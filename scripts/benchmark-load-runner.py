@@ -41,14 +41,14 @@ def load_ddl(iamconnectioninfo, working_dir):
             cursor = conn.cursor()
             # tpcds
             if iamconnectioninfo.tpcds != '' :
-                ddl = open(working_dir + 'tpcds-ddl.sql', 'r')
+                ddl = open(f'{working_dir}tpcds-ddl.sql', 'r')
                 schema = 'tpcds_{}'.format(iamconnectioninfo.tpcds)
                 cursor.execute('create schema if not exists %s' % (schema))
                 cursor.execute('set search_path to %s' % (schema))
                 cursor.execute(ddl.read())
             # tpch
             if iamconnectioninfo.tpcds != '' :
-                ddl = open(working_dir + 'tpch-ddl.sql', 'r')
+                ddl = open(f'{working_dir}tpch-ddl.sql', 'r')
                 schema = 'tpch_{}'.format(iamconnectioninfo.tpch)
                 cursor.execute('create schema if not exists %s' % (schema))
                 cursor.execute('set search_path to %s' % (schema))
@@ -148,14 +148,15 @@ if __name__=='__main__':
     iamconnectioninfo = IamConnection()
 
     # local env for development
-    if not os.path.exists('/Users/bschur/derived-tpcds-tpch-benchmarks/'):
+    working_dir = False
+    if os.path.exists('/Users/bschur/derived-tpcds-tpch-benchmarks/'):
         working_dir = '/Users/bschur/derived-tpcds-tpch-benchmarks/'
 
     # Make sure that needed scripts are done being pulled
-    if working_dir is None:
+    if working_dir is False:
         working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/'
         while os.path.exists(f'{working_dir}tpcds-ddl.sql') is False:
-            time.sleep(2)
+            time.sleep(1)
 
     # load DDL
     load_ddl(iamconnectioninfo, working_dir)
