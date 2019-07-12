@@ -9,7 +9,7 @@ from pgdb import connect
 def is_json_argument_required(i):
     options = {
             'tpch': True,
-            'tpcds': True
+            'tpcds': False
             #'burst': True,
             # ...
             # ...
@@ -38,6 +38,7 @@ def worker(queue):
         queue.task_done()
 
 def tpcds():
+    # This is just to show how to connect once in the function
     iamconnectioninfo = IamConnection()
     with connect(database=iamconnectioninfo.db, host=iamconnectioninfo.hostname_plus_port, user=iamconnectioninfo.username,
                  password=iamconnectioninfo.password) as conn:
@@ -50,6 +51,7 @@ def tpcds():
 
 
 def tpch(args):
+    # Test parsing json
     args_json = json.loads(json.dumps(args))
     print(args_json["quiz"]["sport"])
 

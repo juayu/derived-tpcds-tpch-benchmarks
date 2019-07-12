@@ -71,6 +71,5 @@ class IamConnection:
         self.db = cluster_info['db-name']
         self.tpcds = cluster_info['tpcds']
         self.tpch = cluster_info['tpch']
-        # TODO: currently only one autorun tag, make one for each OR base on tpcds/tpch tags being null
-        self.tpcds_autorun = cluster_info['autorun']
-        self.tpch_autorun = cluster_info['autorun']
+        self.tpcds_autorun = cluster_info['autorun-tpcds']
+        self.tpch_autorun = cluster_info['autorun-tpch']

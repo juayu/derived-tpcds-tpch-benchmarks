@@ -5,7 +5,7 @@ import sys, json
 
 def is_valid_json(myjson):
   try:
-    json_object = json.loads(myjson)
+    json.loads(myjson)
   except ValueError:
     return False
   return True
@@ -31,8 +31,7 @@ runner_function = str(sys.argv[1]+'|')
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.connect('./queryrunner.socket')
 
-if sys.stdin.isatty() is True:
-  print('in atty')
+if is_not_stdin is False:
   s.send(runner_function.encode('UTF-8'))
 else:
   s.send(runner_function.encode('UTF-8'))
