@@ -144,8 +144,8 @@ def load_worker(queue, data_set):
 if __name__=='__main__':
 
     iamconnectioninfo = IamConnection()
-    #working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/'
-    working_dir = '/Users/bschur/derived-tpcds-tpch-benchmarks/'
+    working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/'
+    #working_dir = '/Users/bschur/derived-tpcds-tpch-benchmarks/'
 
     # load DDL
     load_ddl(iamconnectioninfo, working_dir)
