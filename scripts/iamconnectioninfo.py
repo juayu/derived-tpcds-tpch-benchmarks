@@ -1,11 +1,14 @@
 import boto3
 import sh
 import os
+
 try:
     import botocore_amazon.monkeypatch
     is_amzn = True
+    stack_name_path = '/Users/bschur/RedshiftGoldStandard/scripts/stackname.txt'
 except:
     is_amzn = False
+    stack_name_path = '/home/ec2-user/SageMaker/Redshift/assets/metadata/stackname.txt'
 
 from botocore.client import ClientError
 
@@ -18,31 +21,35 @@ class IamConnection:
 
     def __get_cluster_info(self, session):
         """
+        :param session:
         Get information from describeClusters for use in IAM auth and identifying the endpoint/port/db
-
         :return:
         map containing tag value pairs and the hostname 'hostname'
         """
         try:
             client = session.client("redshift")
-            response = client.describe_clusters(TagKeys=['tpcds','tpch','port','stack_name'])
+            stack_name = open(stack_name_path,'r').readline().rstrip('\n')
+            response = client.describe_clusters(TagKeys=['stack_name'], TagValues=[stack_name])
             hostname = response['Clusters'][0]['Endpoint']['Address']
             iamrole = response['Clusters'][0]['IamRoles'][0]['IamRoleArn']
             tags = response['Clusters'][0]['Tags']
             tagMap = {'hostname': hostname,'iamrole': iamrole}
-            for d in tags:
-                tagMap.update(eval("{'"+d["Key"] + "': '" + d["Value"]+"'}"))
+            tagMap.update({tag.get('Key'): tag.get('Value') for tag in tags})
             return tagMap
         except ClientError as e:
             if e.response['Error']['Code'] == 'ClusterNotFound':
                 print("ERROR: ClusterIdentifier does not refer to an existing cluster")
+                raise
             elif e.response['Error']['Code'] == 'InvalidTagFault':
                 print('ERROR: Invalid Tag')
+                raise
             else:
                 print("ERROR: Unexpected error: %s" % e)
+                raise
 
-    def __get_cluster_credentials(self, session, clusteridentifier, dbUser, dbName):
+    def __get_cluster_credentials(self, session, cluster_identifier, dbUser, dbName):
         """
+        :param session:
         :param clusterIdentifier:
         :param dbUser:
         :param dbName:
@@ -54,26 +61,38 @@ class IamConnection:
             response = client.get_cluster_credentials(
                 DbUser=dbUser,
                 DbName=dbName,
-                ClusterIdentifier=clusteridentifier,
+                ClusterIdentifier=cluster_identifier,
                 DurationSeconds=3600,
                 AutoCreate=False
             )
-            creds = {'username': response['DbUser'], 'password': response['DbPassword']}
-
-            return(creds)
+            return {'username': response['DbUser'], 'password': response['DbPassword']}
         except ClientError as e:
             if e.response['Error']['Code'] == 'UnsupportedOperation':
                 print("ERROR: Unsupported Operation. HTTP 400")
+                raise
             elif e.response['Error']['Code'] == 'ClusterNotFound':
-                print('ERROR: ClusterNotFound ' + clusteridentifier)
+                print(f'ERROR: ClusterNotFound {cluster_identifier}')
+                raise
             else:
-                print("ERROR: Unexpected error: %s" % e)
+                print(f'ERROR: Unexpected error: {e}')
+                raise
 
-    def __init__(self):
+    def __init__(self, cluster_identifier=None, master_user=None, db_name=None):
+
         session = boto3.session.Session()
         cluster_info = self.__get_cluster_info(session)
-        cluster_creds = self.__get_cluster_credentials(session, cluster_info["stack_name"], cluster_info["master_user"],
-                                             cluster_info["db_name"])
+
+        if cluster_identifier is None:
+            cluster_identifier = f'{cluster_info["stack_name"]}-{cluster_info["short_uuid"]}'
+
+        if master_user is None:
+            master_user = cluster_info["master_user"]
+
+        if db_name is None:
+            db_name = cluster_info['db_name']
+
+        cluster_creds = self.__get_cluster_credentials(session, cluster_identifier, master_user,
+                                             db_name)
         self.password = cluster_creds['password']
         self.username = cluster_creds['username']
         self.hostname = cluster_info['hostname']
@@ -83,7 +102,7 @@ class IamConnection:
         self.hostname_plus_port = f'{self.hostname}:{self.port}'
         self.port = cluster_info['port']
         self.iamrole = cluster_info['iamrole']
-        self.db = cluster_info['db_name']
+        self.db = db_name
         self.tpcds = cluster_info['tpcds']
         self.tpch = cluster_info['tpch']
         self.tpcds_autorun = cluster_info['autorun_tpcds']

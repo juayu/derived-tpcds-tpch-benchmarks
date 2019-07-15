@@ -26,9 +26,6 @@ def tpcds(inp_json):
         cursor = conn.cursor()
         cursor.execute('select current_user')
         print(cursor.fetchall())
-    #  do whatever
-    #  sql = open('/path/to/sql', 'r')
-    #  cursor.execute(sql.read()
 
 
 def tpch(inp_json):

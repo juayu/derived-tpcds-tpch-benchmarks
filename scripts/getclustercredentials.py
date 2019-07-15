@@ -1,32 +1,18 @@
 #!/usr/bin/env python3
 
-import boto3
 import sys
-from botocore.exceptions import ClientError
+from iamconnectioninfo import IamConnection
 
 if len(sys.argv) != 4 :
-	print("Invalid number of arguments. Usage: ./getclustercredentials.py username clusterIdentifier DbName")
+	print("Invalid number of arguments. Usage: ./getclustercredentials.py cluster_identifier db_user db_name")
 	sys.exit(1)
 
-dbUser=sys.argv[1]
-clusterIdentifier=sys.argv[2]
-dbName=sys.argv[3]
-try:
-    client = boto3.client("redshift")
-    response = client.get_cluster_credentials(
-        DbUser=dbUser,
-        DbName=dbName,
-        ClusterIdentifier=clusterIdentifier,
-        DurationSeconds=3600,
-        AutoCreate=False
-    )
-    dbuser = response['DbUser']
-    dbpwd = response['DbPassword']
-    print(dbuser + ' ' + dbpwd)
-except ClientError as e:
-    if e.response['Error']['Code'] == 'UnsupportedOperation':
-        print("ERROR: Unsupported Operation. HTTP 400")
-    elif e.response['Error']['Code'] == 'ClusterNotFound':
-        print('ERROR: ClusterNotFound ' + clusterIdentifier)
-    else:
-        print("ERROR: Unexpected error: %s" % e)
+cluster_identifier=sys.argv[1]
+db_user=sys.argv[2]
+db_name=sys.argv[3]
+
+iam_info = IamConnection(cluster_identifier, db_user, db_name)
+ret_val = f'{iam_info.username} {iam_info.password}'
+
+print(ret_val)
+

@@ -1,5 +1,19 @@
 #!/bin/bash
 
+
+# TODO: Remove when dev is done
+# Get stackname from notebook instance metadata to filter on Redshift stackname tag
+stackname_path='/home/ec2-user/SageMaker/Redshift/assets/metadata/stackname.txt'
+stackname_internal_path='/Users/bschur/RedshiftGoldStandard/scripts/stackname.txt'
+
+if [ -f $stackname_internal_path ]; then
+    stackname_path=$stackname_internal_path
+    is_internal=true
+fi
+
+stackname=`head -n 1 $stackname_path`
+
+
 if [  -z "$PGCONNECT_TIMEOUT"  ]; then 
 	export PGCONNECT_TIMEOUT=10
 fi
@@ -15,15 +29,14 @@ if [[ "$*" == *'--no-iam'* ]] ; then
 else
 
 
-# TODO: reduce number of describe calls, pass full describe output to jq and then handle parsing logic client side 
-redshiftTags=$(aws redshift describe-clusters --query "Clusters[*].[[Tags[?Key=='master-user'].Value],[Tags[?Key=='stack-name'].Value],[Tags[?Key=='db-name'].Value],[Tags[?Key=='port'].Value]]" --output text)
-
-redshiftTagArray=(${redshiftTags// / })
-userName=${redshiftTagArray[0]}
-clusterIdentifier=${redshiftTagArray[1]}
-database=${redshiftTagArray[2]}
-port=${redshiftTagArray[3]}
-
+# parse Redshift tags to pass to getclustercredentials.py
+redshiftTags=$(aws redshift describe-clusters --tag-keys stack_name --tag-values $stackname --query 'Clusters[*].Tags[*]' | jq '.[][]')
+userName=$(echo $redshiftTags | jq -r 'select(.Key == "master_user").Value')
+cfmstack=$(echo $redshiftTags | jq -r 'select(.Key == "stack_name").Value')
+shortuuid=$(echo $redshiftTags | jq -r 'select(.Key == "short_uuid").Value')
+database=$(echo $redshiftTags | jq -r 'select(.Key == "db_name").Value')
+port=$(echo $redshiftTags | jq -r 'select(.Key == "port").Value')
+clusterIdentifier="$cfmstack-$shortuuid"
 
 hostName=$(aws redshift describe-clusters --cluster-identifier $clusterIdentifier --query 'Clusters[*].Endpoint.Address' --output text)
 
@@ -57,16 +70,22 @@ hostName=$(aws redshift describe-clusters --cluster-identifier $clusterIdentifie
 
 clusterIdentifier=${hostName%%.*}
 
-credstring=$(./getclustercredentials.py $userName $clusterIdentifier $database)
+# TODO: Remove when dev is done
+if [ "$is_internal" = true ]; then
+    hostName='34.196.76.41'
+fi
+
+credstring=$(./getclustercredentials.py $clusterIdentifier $userName $database)
 
 IFS=' ' read -a arr <<< "$credstring"
 iamUser=${arr[0]}
+iampassword=${arr[1]}
 
                 if [  "$iamUser" == "ERROR:"  ]; then
                         # print out error string passed from ClientError response
                         echo $credstring
                 else
-                        export PGPASSWORD=${arr[1]};
+                        export PGPASSWORD=$iampassword
 
                         if [ -z "$file" ] && [ -z "$cmd" ]; then
                             psql -h $hostName -p $port -d $database -U $iamUser $tuples

@@ -7,13 +7,13 @@ from pgdb import connect
 def autorun_tpcds(iamconnectioninfo, working_dir):
 
     if iamconnectioninfopcds_autorun and iamconnectioninfo.tpcds == '':
-        tpcds_sql = open(working_dir + 'tpcds-queries.sql', 'r')
+        tpcds_sql = open(working_dir + 'tpcds-queries.sql', 'r').read()
         schema = 'tpcds_{}'.format(iamconnectioninfo.tpch)
         with connect(database=iamconnectioninfo.db, host=iamconnectioninfo.hostname_plus_port,
                      user=iamconnectioninfo.username, password=iamconnectioninfo.password) as conn:
             cursor = conn.cursor()
             cursor.execute('set search_path to %s' % (schema))
-            cursor.execute(tpcds_sql.read())
+            cursor.execute(tpcds_sql)
             cursor.execute('select pg_backend_pid()')
             autorun_pid = int("".join(filter(str.isdigit, str(cursor.fetchone()))))
         return autorun_pid
@@ -22,37 +22,37 @@ def autorun_tpcds(iamconnectioninfo, working_dir):
 def autorun_tpch(iamconnectioninfo, working_dir):
 
     if iamconnectioninfo.tpch_autorun and iamconnectioninfo.tpch != '':
-        tpch_sql = open(working_dir + 'tpcds-queries.sql', 'r')
+        tpch_sql = open(working_dir + 'tpcds-queries.sql', 'r').read()
         schema = 'tpcds_{}'.format(iamconnectioninfo.tpch)
         with connect(database=iamconnectioninfo.db, host=iamconnectioninfo.hostname_plus_port,
                      user=iamconnectioninfo.username, password=iamconnectioninfo.password) as conn:
             cursor = conn.cursor()
             cursor.execute('set search_path to %s' % (schema))
-            cursor.execute(tpch_sql.read())
+            cursor.execute(tpch_sql)
             cursor.execute('select pg_backend_pid()')
             autorun_pid = int("".join(filter(str.isdigit, str(cursor.fetchone()))))
         return autorun_pid
 
 
 def load_ddl(iamconnectioninfo, working_dir):
-    if iamconnectioninfo.tpcds != '' and iamconnectioninfo.tpcds != '' :
+    if iamconnectioninfo.tpcds != '' and iamconnectioninfo.tpcds != '':
         with connect(database=iamconnectioninfo.db, host=iamconnectioninfo.hostname_plus_port,
                      user=iamconnectioninfo.username, password=iamconnectioninfo.password) as conn:
             cursor = conn.cursor()
             # tpcds
             if iamconnectioninfo.tpcds != '' :
-                ddl = open(f'{working_dir}tpcds-ddl.sql', 'r')
+                ddl = open(f'{working_dir}tpcds-ddl.sql', 'r').read()
                 schema = 'tpcds_{}'.format(iamconnectioninfo.tpcds)
                 cursor.execute('create schema if not exists %s' % (schema))
                 cursor.execute('set search_path to %s' % (schema))
-                cursor.execute(ddl.read())
+                cursor.execute(ddl)
             # tpch
             if iamconnectioninfo.tpcds != '' :
-                ddl = open(f'{working_dir}tpch-ddl.sql', 'r')
+                ddl = open(f'{working_dir}tpch-ddl.sql', 'r').read()
                 schema = 'tpch_{}'.format(iamconnectioninfo.tpch)
                 cursor.execute('create schema if not exists %s' % (schema))
                 cursor.execute('set search_path to %s' % (schema))
-                cursor.execute(ddl.read())
+                cursor.execute(ddl)
 
 
         with connect(dbname='postgres', user='ec2-user') as conn:
@@ -169,4 +169,4 @@ if __name__=='__main__':
     tpcds_pid = autorun_tpcds(iamconnectioninfo, working_dir)
 
     # autorun tpch
-    tpch_pid = autorun_tpcdh(iamconnectioninfo, working_dir)
+    tpch_pid = autorun_tpch(iamconnectioninfo, working_dir)
