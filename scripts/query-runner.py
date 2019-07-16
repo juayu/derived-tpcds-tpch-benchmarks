@@ -5,22 +5,23 @@ import json
 from iamconnectioninfo import IamConnection
 from pgdb import connect
 
+
 def worker(queue):
     while True:
         inp_json = json.loads(queue.get())
         function_name = inp_json['function']
 
-        switch = {
-            'tpcds':tpcds,
-            'tpch':tpch
-        }
+        switch = {'tpcds': tpcds, 'tpch': tpch}
         switch[function_name](inp_json)
         queue.task_done()
+
 
 def tpcds(inp_json):
     # This is just to show how to connect once in the function
     iamconnectioninfo = IamConnection()
-    with connect(database=iamconnectioninfo.db, host=iamconnectioninfo.hostname_plus_port, user=iamconnectioninfo.username,
+    with connect(database=iamconnectioninfo.db,
+                 host=iamconnectioninfo.hostname_plus_port,
+                 user=iamconnectioninfo.username,
                  password=iamconnectioninfo.password) as conn:
         cursor = conn.cursor()
         cursor.execute('select current_user')
@@ -40,8 +41,7 @@ if __name__ == '__main__':
     if os.path.exists(f'{path}/queryrunner.socket'):
         os.remove(f'{path}/queryrunner.socket')
 
-    serversocket = socket.socket(
-        socket.AF_UNIX, socket.SOCK_STREAM)
+    serversocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
     serversocket.bind(f'{path}/queryrunner.socket')
 
@@ -58,9 +58,12 @@ if __name__ == '__main__':
         inp_queue.put(msg)
 
         processes = []
-        num_workers=1
+        num_workers = 1
         for i in range(num_workers):
-            worker_process = mp.Process(target=worker, args=(inp_queue,), daemon=True, name='worker_process_{}'.format(i))
+            worker_process = mp.Process(target=worker,
+                                        args=(inp_queue, ),
+                                        daemon=True,
+                                        name='worker_process_{}'.format(i))
             worker_process.start()
             processes.append(worker_process)
 
