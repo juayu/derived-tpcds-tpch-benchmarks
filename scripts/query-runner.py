@@ -4,7 +4,6 @@ import os
 import json
 from iamconnectioninfo import IamConnection
 from pgdb import connect
-from icecream import ic
 
 def worker(queue):
     while True:
