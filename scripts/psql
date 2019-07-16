@@ -38,6 +38,7 @@ database=$(echo $redshiftTags | jq -r 'select(.Key == "db_name").Value')
 port=$(echo $redshiftTags | jq -r 'select(.Key == "port").Value')
 clusterIdentifier="$cfmstack-$shortuuid"
 
+
 hostName=$(aws redshift describe-clusters --cluster-identifier $clusterIdentifier --query 'Clusters[*].Endpoint.Address' --output text)
 
 # TODO: add checks if connection attributes changed versus tagging 
@@ -72,7 +73,7 @@ clusterIdentifier=${hostName%%.*}
 
 # TODO: Remove when dev is done
 if [ "$is_internal" = true ]; then
-    hostName='34.196.76.41'
+    hostName='3.222.16.97'
 fi
 
 credstring=$(./getclustercredentials.py $clusterIdentifier $userName $database)
