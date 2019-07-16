@@ -7,7 +7,7 @@ from pgdb import connect
 
 def autorun_tpcds(iamconnectioninfo, working_dir):
 
-    if iamconnectioninfopcds_autorun and iamconnectioninfo.tpcds == '':
+    if iamconnectioninfo.tpcds_autorun and iamconnectioninfo.tpcds == '':
         tpcds_sql = open(working_dir + 'tpcds-queries.sql', 'r').read()
         schema = 'tpcds_{}'.format(iamconnectioninfo.tpch)
         with connect(database=iamconnectioninfo.db,
