@@ -5,7 +5,6 @@ import argparse
 import os
 from voluptuous import Schema, Required, All, Length, MultipleInvalid
 
-# TODO: Actual json schema validations that ensure needed attributes are supplied as well as surrounding single quotes
 schema = Schema({Required('json'): All(str, Length(min=4))})
 
 parser = argparse.ArgumentParser()

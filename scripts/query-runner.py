@@ -2,6 +2,7 @@ import multiprocessing as mp
 import socket
 import os
 import json
+from benchmarkloadrunner import benchmark_auto_run
 from iamconnectioninfo import IamConnection
 from pgdb import connect
 
@@ -34,6 +35,10 @@ def tpch(inp_json):
 
 if __name__ == '__main__':
 
+    # call benchmarkloadrunner.py function which both loads data/runs power query for tpch/ds
+    benchmark_auto_run()
+    exit(1)
+
     path = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts'
     if not os.path.exists(path):
         path = '/Users/bschur/RedshiftGoldStandard/scripts'
@@ -43,6 +48,7 @@ if __name__ == '__main__':
 
     serversocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
+    # TODO: plan is to make this non blocking, need to test
     serversocket.bind(f'{path}/queryrunner.socket')
 
     # queue up to 10 socket connections
@@ -52,6 +58,7 @@ if __name__ == '__main__':
     inp_queue = mp.JoinableQueue()
 
     while True:
+
         clientsocket, addr = serversocket.accept()
         msg = clientsocket.recv(4096).decode()
         clientsocket.close()
