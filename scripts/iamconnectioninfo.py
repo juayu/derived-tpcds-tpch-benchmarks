@@ -8,7 +8,7 @@ try:
     stack_name_path = '/Users/bschur/RedshiftGoldStandard/scripts/stackname.txt'
 except:
     is_amzn = False
-    stack_name_path = '/home/ec2-user/SageMaker/Redshift/assets/metadata/stackname.txt'
+    stack_name_path = '/home/ec2-user/SageMaker/assets/metadata/stackname.txt'
 
 from botocore.client import ClientError
 
