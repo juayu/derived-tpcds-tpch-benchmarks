@@ -3,7 +3,7 @@
 
 # TODO: Remove when dev is done
 # Get stackname from notebook instance metadata to filter on Redshift stackname tag
-stackname_path='/home/ec2-user/SageMaker/Redshift/assets/metadata/stackname.txt'
+stackname_path='/home/ec2-user/SageMaker/assets/metadata/stackname.txt'
 stackname_internal_path='/Users/bschur/RedshiftGoldStandard/scripts/stackname.txt'
 
 if [ -f $stackname_internal_path ]; then
