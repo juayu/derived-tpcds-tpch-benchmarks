@@ -74,9 +74,11 @@ clusterIdentifier=${hostName%%.*}
 # TODO: Remove when dev is done
 if [ "$is_internal" = true ]; then
     hostName='3.222.16.97'
+    credstring=$(~/RedshiftGoldStandard/scripts/notebook/getclustercredentials.py $clusterIdentifier $userName $database)
+else
+    credstring=$(/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts/getclustercredentials.py $clusterIdentifier $userName $database)
 fi
 
-credstring=$(./getclustercredentials.py $clusterIdentifier $userName $database)
 
 IFS=' ' read -a arr <<< "$credstring"
 iamUser=${arr[0]}
