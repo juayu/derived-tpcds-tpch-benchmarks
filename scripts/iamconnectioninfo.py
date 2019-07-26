@@ -1,7 +1,7 @@
+import cachetools.func
 import boto3
 import sh
 import os
-
 try:
     import botocore_amazon.monkeypatch
     is_amzn = True
@@ -18,7 +18,10 @@ if is_amzn is True:
     os.environ["AWS_CONFIG_FILE"] = f'{GIT_ROOT}/aws.cfg'
 
 
+@cachetools.func.ttl_cache(maxsize=10, ttl=3530)
 class IamConnection:
+    @classmethod
+    @cachetools.func.ttl_cache()
     def __get_cluster_info(self, session):
         """
         :param session:
@@ -50,6 +53,8 @@ class IamConnection:
                 print("ERROR: Unexpected error: %s" % e)
                 raise
 
+    @classmethod
+    @cachetools.func.ttl_cache()
     def __get_cluster_credentials(self, session, cluster_identifier, dbUser,
                                   dbName):
         """
