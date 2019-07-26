@@ -44,7 +44,7 @@ def update_task_status(args_dict):
         cols = cols[:-1]
         vals = vals[:-1]
         insert_sql = f'insert into task_status({cols}) values({vals})'
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             cursor.execute(insert_sql)
 
@@ -61,13 +61,12 @@ def update_task_status(args_dict):
             set_clause += f"{key}='{val_tmp}',"
         set_clause = set_clause[:-1]
         update_sql = f"update task_status set {set_clause} where task_uuid='{task_uuid}'"
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             cursor.execute(update_sql)
             
 
 def summarize_benchmark(tpcds_pid, tpch_pid):
-
     if tpcds_pid is not None or tpch_pid is not None:
         iamconnectioninfo = IamConnection()
         with connect(database=iamconnectioninfo.db,
@@ -78,18 +77,16 @@ def summarize_benchmark(tpcds_pid, tpch_pid):
             if tpcds_pid is not None:
                 cursor.execute(f"with compile_agg as (select query,datediff(us,min(starttime),max(endtime))/1000::NUMERIC as compile_ms from svl_compile group by 1)   select trim(label) as label,listagg(sq.query,',') within group (order by sq.query) as query_ids, min(sq.starttime) as redshift_query_start, max(sq.endtime) as redshift_query_end, sum(total_queue_time)/1000::NUMERIC as sum_queue_ms,sum(compile_ms) as sum_compile_ms from stl_query sq join stl_wlm_query wq using(query) join compile_agg ca using(query) where sq.pid={tpcds_pid} group by 1 order by 1")
                 ret = CursorByName(cursor)
-
-                with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+                with connect(dbname='postgres', user='ec2-user') as conn:
                     cur = conn.cursor()
                     for row in ret:
                         cur.execute(
                             f"UPDATE benchmark_query_status SET redshift_query_start=\'{row['redshift_query_start']}\',redshift_query_end=\'{row['redshift_query_end']}\',total_queue_time_ms={row['sum_queue_ms']},total_compile_time_ms={row['sum_compile_ms']},query_ids=\'{row['query_ids']}\' WHERE benchmark_query_template=\'{row['label']}\'"
                         )
             if tpch_pid is not None:
-                cursor.execute(f"with compile_agg as (select query,datediff(us,min(starttime),max(endtime))/1000::NUMERIC as compile_ms from svl_compile group by 1)   select trim(label) as label,listagg(sq.query,',') within group (order by sq.query) as query_ids, min(sq.starttime) as redshift_query_start, max(sq.endtime) as redshift_query_end, sum(total_queue_time)/1000::NUMERIC as sum_queue_ms,sum(compile_ms) as sum_compile_ms from stl_query sq join stl_wlm_query wq using(query) join compile_agg ca using(query) where sq.pid={tpcds_pid} group by 1 order by 1")
+                cursor.execute(f"with compile_agg as (select query,datediff(us,min(starttime),max(endtime))/1000::NUMERIC as compile_ms from svl_compile group by 1)   select trim(label) as label,listagg(sq.query,',') within group (order by sq.query) as query_ids, min(sq.starttime) as redshift_query_start, max(sq.endtime) as redshift_query_end, sum(total_queue_time)/1000::NUMERIC as sum_queue_ms,sum(compile_ms) as sum_compile_ms from stl_query sq join stl_wlm_query wq using(query) join compile_agg ca using(query) where sq.pid={tpch_pid} group by 1 order by 1")
                 ret = CursorByName(cursor)
-
-                with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+                with connect(dbname='postgres', user='ec2-user') as conn:
                     cur = conn.cursor()
                     for row in ret:
                         cur.execute(
@@ -120,8 +117,8 @@ def autorun_benchmark(tpc_benchmark, working_dir, streams, task_uuid, postgres_w
                 num_queries = 22
             for i in range(1, num_queries + 1):
                 query = streams[stream][i - 1]
-                query_tpl = f'{query}.tpl'
-                sql_path = f'{working_dir}/{tpc_benchmark}/streams/{scale}/{stream}/{i}.query{query}.tpl'
+                query_sql = f'{query}.sql'
+                sql_path = f'{working_dir}/{tpc_benchmark}/streams/{scale}/{stream}/{stream}.query{query}.sql'
                 print(sql_path)
                 sql = open(sql_path, 'r').read()
                 time_start = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -133,12 +130,12 @@ def autorun_benchmark(tpc_benchmark, working_dir, streams, task_uuid, postgres_w
                     'pid': autorun_pid,
                     'stream': stream,
                     'stream_ident': i,
-                    'query': query_tpl,
+                    'query': query_sql,
                     'tpc_benchmark': tpc_benchmark,
                     'scale': scale
                 }
                 postgres_writer_queue.put(exec_info)
-                cursor.execute(f"set query_group to '{query_tpl}';{sql}")
+                cursor.execute(f"set query_group to '{query_sql}';{sql}")
                 time_end = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")
                 exec_info = {
                     'type': 'update',
@@ -174,13 +171,15 @@ def load_ddl(iamconnectioninfo, working_dir):
             cursor.execute(ddl)
 
     # task status tables for monitoring
-    with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+    with connect(dbname='postgres', user='ec2-user') as conn:
         cursor = conn.cursor()
         cursor.execute(open(f'{working_dir}/ddl/task_status.sql', 'r').read())
         cursor.execute(open(f'{working_dir}/ddl/task_load_status.sql', 'r').read())
         cursor.execute(open(f'{working_dir}/ddl/benchmark_query_status.sql', 'r').read())
         cursor.execute(open(f'{working_dir}/ddl/benchmark_table_row_counts.sql', 'r').read())
-
+        # TODO: add validations to prevent duplicate row count entries
+        cursor.execute('TRUNCATE benchmark_table_row_counts')
+        cursor.execute(open(f'{working_dir}/rowcounts.sql', 'r').read())
 
 
 def load_tpcds(num_worker_process, task_uuid, tables_already_loaded):
@@ -280,7 +279,7 @@ def load_worker(queue, data_set, task_uuid):
         copy_sql = f"COPY {tbl} FROM 's3://{bucket}/dataset={data_set}/size={scale}/table={tbl}/{tbl}.manifest' iam_role '{iamconnectioninfo.iamrole}' gzip delimiter '|' COMPUPDATE OFF MANIFEST"
         copy_sql_double_quoted = copy_sql.translate(str.maketrans({"'": r"''"}))
 
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             cursor.execute(
                 f"INSERT INTO task_load_status(task_uuid,tablename,dataset,status,load_start,querytext) values('{task_uuid}','{tbl}','{schema}','inflight',timezone('utc', now()),'{copy_sql_double_quoted}')")
@@ -306,7 +305,7 @@ def load_worker(queue, data_set, task_uuid):
 
             
 
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             cursor.execute(
                 'UPDATE task_load_status SET status=\'complete\',load_end=timezone(\'utc\', now()), '
@@ -321,7 +320,7 @@ def load_worker(queue, data_set, task_uuid):
 def pg_writer(queue):
     while True:
         msg = queue.get()
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             if msg["type"] == 'insert':
                 cursor.execute(
@@ -329,7 +328,7 @@ def pg_writer(queue):
                 )
             if msg["type"] == 'update':
                 cursor.execute(
-                    f'UPDATE benchmark_query_status _path SET client_endtime=\'{msg["client_endtime"]}\' where task_uuid=\'{msg["task_uuid"]}\' and query_order_in_stream=\'{msg["stream_ident"]}\''
+                    f'UPDATE benchmark_query_status SET client_endtime=\'{msg["client_endtime"]}\' where task_uuid=\'{msg["task_uuid"]}\' and query_order_in_stream=\'{msg["stream_ident"]}\''
                 )
         conn.close()
         queue.task_done()
@@ -355,7 +354,7 @@ def validate_rowcounts(iamconnectioninfo, tpcds_scale, tpch_scale):
                         ret = CursorByName(cursor)
                         for row in ret :
                             redshift_rowcounts[row['table']] = row['tbl_rows']
-                        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+                        with connect(dbname='postgres', user='ec2-user') as conn:
                             cur = conn.cursor()
                             cur.execute(f"select * from benchmark_table_row_counts where benchmark='tpcds_{tpcds_scale}'")
                             pg_ret = CursorByName(cur)
@@ -378,7 +377,7 @@ def validate_rowcounts(iamconnectioninfo, tpcds_scale, tpch_scale):
                         ret = CursorByName(cursor)
                         for row in ret :
                             redshift_rowcounts[row['table']] = row['tbl_rows']
-                        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+                        with connect(dbname='postgres', user='ec2-user') as conn:
                             cur = conn.cursor()
                             cur.execute(f"select * from benchmark_table_row_counts where benchmark='tpch_{tpch_scale}'")
                             pg_ret = CursorByName(cur)
@@ -434,9 +433,14 @@ def benchmark_auto_run():
         task_status = {'type': 'update', 'uuid': task_uuid, 'sql': {'task_status': 'complete', }}
         update_task_status(task_status)
 
+
+    # autorun benchmarks
+    tpcds_pid = None
+    tpch_pid = None
+
     # Only a single stream is defined for both tpch/ds as we're running the power test for both. The list maps to the query template number in the stream
     streams = {
-        'power': [
+        0 : [
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
             20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
             37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53,
@@ -454,9 +458,7 @@ def benchmark_auto_run():
 
     pg_process.start()
 
-    # autorun benchmarks
-    tpcds_pid = None
-    tpch_pid = None
+
 
     # autorun TPCDS
     if tpcds_autorun and tpcds_scale != '':
@@ -481,3 +483,4 @@ def benchmark_auto_run():
     postgres_writer_queue.join()
 
     summarize_benchmark(tpcds_pid, tpch_pid)
+

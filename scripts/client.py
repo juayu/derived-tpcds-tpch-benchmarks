@@ -3,6 +3,7 @@
 import socket
 import argparse
 import os
+import json
 from voluptuous import Schema, Required, All, Length, MultipleInvalid
 
 schema = Schema({Required('json'): All(str, Length(min=4))})
@@ -28,5 +29,11 @@ if not os.path.exists(path):
 s.connect(f'{path}/queryrunner.socket')
 
 s.send(json_conf['json'].encode('UTF-8'))
+
+
+out_json = json.loads(json_conf['json'])
+if out_json['function'] == 'status':
+    ret = s.recv(4096).decode()
+    print(ret)
 
 s.close()
