@@ -407,7 +407,12 @@ def benchmark_auto_run():
         load_ddl(iamconnectioninfo, working_dir)
 
     # returns a dict containing keys tpcds/tpch , each with values being a list of table names with matching rowcounts per the postgres table benchmark_table_row_counts
-    matched_table_names = []
+    matched_table_names = {
+        'tpch': [],
+        'tpcds': [],
+        'tpch_schema_exists': False,
+        'tpcds_schema_exists': False,
+    }
 
 
     # TODO: READD THIS once we have rowcounts for all scale factors
