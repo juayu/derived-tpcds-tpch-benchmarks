@@ -3,7 +3,7 @@
 
 # TODO: Remove when dev is done
 # Get stackname from notebook instance metadata to filter on Redshift stackname tag
-stackname_path='/home/ec2-user/SageMaker/Redshift/assets/metadata/stackname.txt'
+stackname_path='/home/ec2-user/SageMaker/assets/metadata/stackname.txt'
 stackname_internal_path='/Users/bschur/RedshiftGoldStandard/scripts/stackname.txt'
 
 if [ -f $stackname_internal_path ]; then
@@ -42,7 +42,7 @@ clusterIdentifier="$cfmstack-$shortuuid"
 hostName=$(aws redshift describe-clusters --cluster-identifier $clusterIdentifier --query 'Clusters[*].Endpoint.Address' --output text)
 
 # TODO: add checks if connection attributes changed versus tagging 
-# TODO: Support all /usr/bin/psql arguments. Easiest to just strip away authentication parameters all of the time (except for --no-iam) and then just append arguments ( $* )
+# TODO: Support all psql arguments. Easiest to just strip away authentication parameters all of the time (except for --no-iam) and then just append arguments ( $* )
 # will still need to ta still assign hostname arg to a variable for use in looking up cluster identifier 
 
                 while [ "$#" -gt 0 ]; do
@@ -93,9 +93,10 @@ iampassword=${arr[1]}
                         if [ -z "$file" ] && [ -z "$cmd" ]; then
                             /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser $tuples
                         elif [ ! -z "$file" ]  && [ -z "$cmd" ]; then
+							echo "2"
                             /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --file="$file" $tuples
 						elif [ -z "$file" ] && [ ! -z "$cmd" ]; then
-                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" $tuples 
+                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" $tuples
 						else
                             /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" --file="$file" $tuples
 						fi
