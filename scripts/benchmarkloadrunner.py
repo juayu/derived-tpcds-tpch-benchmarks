@@ -44,7 +44,7 @@ def update_task_status(args_dict):
         cols = cols[:-1]
         vals = vals[:-1]
         insert_sql = f'insert into task_status({cols}) values({vals})'
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             cursor.execute(insert_sql)
 
@@ -61,7 +61,7 @@ def update_task_status(args_dict):
             set_clause += f"{key}='{val_tmp}',"
         set_clause = set_clause[:-1]
         update_sql = f"update task_status set {set_clause} where task_uuid='{task_uuid}'"
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             cursor.execute(update_sql)
             
@@ -79,7 +79,7 @@ def summarize_benchmark(tpcds_pid, tpch_pid):
                 cursor.execute(f"with compile_agg as (select query,datediff(us,min(starttime),max(endtime))/1000::NUMERIC as compile_ms from svl_compile group by 1)   select trim(label) as label,listagg(sq.query,',') within group (order by sq.query) as query_ids, min(sq.starttime) as redshift_query_start, max(sq.endtime) as redshift_query_end, sum(total_queue_time)/1000::NUMERIC as sum_queue_ms,sum(compile_ms) as sum_compile_ms from stl_query sq join stl_wlm_query wq using(query) join compile_agg ca using(query) where sq.pid={tpcds_pid} group by 1 order by 1")
                 ret = CursorByName(cursor)
 
-                with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+                with connect(dbname='postgres', user='ec2-user') as conn:
                     cur = conn.cursor()
                     for row in ret:
                         cur.execute(
@@ -89,7 +89,7 @@ def summarize_benchmark(tpcds_pid, tpch_pid):
                 cursor.execute(f"with compile_agg as (select query,datediff(us,min(starttime),max(endtime))/1000::NUMERIC as compile_ms from svl_compile group by 1)   select trim(label) as label,listagg(sq.query,',') within group (order by sq.query) as query_ids, min(sq.starttime) as redshift_query_start, max(sq.endtime) as redshift_query_end, sum(total_queue_time)/1000::NUMERIC as sum_queue_ms,sum(compile_ms) as sum_compile_ms from stl_query sq join stl_wlm_query wq using(query) join compile_agg ca using(query) where sq.pid={tpcds_pid} group by 1 order by 1")
                 ret = CursorByName(cursor)
 
-                with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+                with connect(dbname='postgres', user='ec2-user') as conn:
                     cur = conn.cursor()
                     for row in ret:
                         cur.execute(
@@ -174,7 +174,7 @@ def load_ddl(iamconnectioninfo, working_dir):
             cursor.execute(ddl)
 
     # task status tables for monitoring
-    with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+    with connect(dbname='postgres', user='ec2-user') as conn:
         cursor = conn.cursor()
         cursor.execute(open(f'{working_dir}/ddl/task_status.sql', 'r').read())
         cursor.execute(open(f'{working_dir}/ddl/task_load_status.sql', 'r').read())
@@ -280,7 +280,7 @@ def load_worker(queue, data_set, task_uuid):
         copy_sql = f"COPY {tbl} FROM 's3://{bucket}/dataset={data_set}/size={scale}/table={tbl}/{tbl}.manifest' iam_role '{iamconnectioninfo.iamrole}' gzip delimiter '|' COMPUPDATE OFF MANIFEST"
         copy_sql_double_quoted = copy_sql.translate(str.maketrans({"'": r"''"}))
 
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             cursor.execute(
                 f"INSERT INTO task_load_status(task_uuid,tablename,dataset,status,load_start,querytext) values('{task_uuid}','{tbl}','{schema}','inflight',timezone('utc', now()),'{copy_sql_double_quoted}')")
@@ -306,7 +306,7 @@ def load_worker(queue, data_set, task_uuid):
 
             
 
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             cursor.execute(
                 'UPDATE task_load_status SET status=\'complete\',load_end=timezone(\'utc\', now()), '
@@ -321,7 +321,7 @@ def load_worker(queue, data_set, task_uuid):
 def pg_writer(queue):
     while True:
         msg = queue.get()
-        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+        with connect(dbname='postgres', user='ec2-user') as conn:
             cursor = conn.cursor()
             if msg["type"] == 'insert':
                 cursor.execute(
@@ -355,7 +355,7 @@ def validate_rowcounts(iamconnectioninfo, tpcds_scale, tpch_scale):
                         ret = CursorByName(cursor)
                         for row in ret :
                             redshift_rowcounts[row['table']] = row['tbl_rows']
-                        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+                        with connect(dbname='postgres', user='ec2-user') as conn:
                             cur = conn.cursor()
                             cur.execute(f"select * from benchmark_table_row_counts where benchmark='tpcds_{tpcds_scale}'")
                             pg_ret = CursorByName(cur)
@@ -378,7 +378,7 @@ def validate_rowcounts(iamconnectioninfo, tpcds_scale, tpch_scale):
                         ret = CursorByName(cursor)
                         for row in ret :
                             redshift_rowcounts[row['table']] = row['tbl_rows']
-                        with connect(dbname='postgres', user='postgres', host='0.0.0.0') as conn:
+                        with connect(dbname='postgres', user='ec2-user') as conn:
                             cur = conn.cursor()
                             cur.execute(f"select * from benchmark_table_row_counts where benchmark='tpch_{tpch_scale}'")
                             pg_ret = CursorByName(cur)

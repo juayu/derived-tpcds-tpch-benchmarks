@@ -3,7 +3,7 @@
 
 # TODO: Remove when dev is done
 # Get stackname from notebook instance metadata to filter on Redshift stackname tag
-stackname_path='/home/ec2-user/SageMaker/assets/metadata/stackname.txt'
+stackname_path='/home/ec2-user/SageMaker/Redshift/assets/metadata/stackname.txt'
 stackname_internal_path='/Users/bschur/RedshiftGoldStandard/scripts/stackname.txt'
 
 if [ -f $stackname_internal_path ]; then
@@ -23,7 +23,7 @@ isIAM=true
 
 if [[ "$*" == *'--no-iam'* ]] ; then 
 	args="$*"
-	cmd="/usr/bin/psql ${args//--no-iam/}"
+	cmd="psql ${args//--no-iam/}"
     exec $cmd
 	exit 0
 else
@@ -91,14 +91,14 @@ iampassword=${arr[1]}
                         export PGPASSWORD=$iampassword
 
                         if [ -z "$file" ] && [ -z "$cmd" ]; then
-                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser $tuples
+                            psql -h $hostName -p $port -d $database -U $iamUser $tuples
                         elif [ ! -z "$file" ]  && [ -z "$cmd" ]; then
 							echo "2"
-                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --file="$file" $tuples
+                            psql -h $hostName -p $port -d $database -U $iamUser --file="$file" $tuples
 						elif [ -z "$file" ] && [ ! -z "$cmd" ]; then
-                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" $tuples
+                            psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" $tuples 
 						else
-                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" --file="$file" $tuples
+                            psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" --file="$file" $tuples
 						fi
                 fi
 fi
