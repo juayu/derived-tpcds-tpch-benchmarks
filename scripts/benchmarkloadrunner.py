@@ -396,9 +396,6 @@ def benchmark_auto_run():
     tpcds_scale = iamconnectioninfo.tpcds.lower()
     tpch_scale = iamconnectioninfo.tpch.lower()
 
-    # returns a dict containing keys tpcds/tpch , each with values being a list of table names with matching rowcounts per the postgres table benchmark_table_row_counts
-    matched_table_names = validate_rowcounts(iamconnectioninfo,tpcds_scale,tpch_scale)
-
     # local env for development
     if os.path.exists('/Users/bschur/derived-tpcds-tpch-benchmarks'):
         working_dir = '/Users/bschur/derived-tpcds-tpch-benchmarks'
@@ -406,8 +403,16 @@ def benchmark_auto_run():
         working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks'
 
     # load DDL. Includes both DDL in the postgres DB for monitoring as well as tpcds/tpcdh tables
-    if iamconnectioninfo.tpcds != '' and iamconnectioninfo.tpcds != '':
+    if iamconnectioninfo.tpcds != '' or iamconnectioninfo.tpch != '':
         load_ddl(iamconnectioninfo, working_dir)
+
+    # returns a dict containing keys tpcds/tpch , each with values being a list of table names with matching rowcounts per the postgres table benchmark_table_row_counts
+    matched_table_names = []
+
+
+    # TODO: READD THIS once we have rowcounts for all scale factors
+    # validate_rowcounts(iamconnectioninfo,tpcds_scale,tpch_scale)
+
 
     # load TPCDS
     if iamconnectioninfo.tpcds != '':
