@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS task_status (
     task_concurrency int,
     task_status varchar(24),
     task_request json,
-    task_priority smallint,
+    task_position int,
     task_request_time timestamp without time zone,
     task_start_time timestamp without time zone,
     task_end_time timestamp without time zone

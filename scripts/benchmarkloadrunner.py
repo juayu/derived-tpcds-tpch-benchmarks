@@ -66,10 +66,9 @@ def update_task_status(args_dict):
             cursor.execute(update_sql)
             
 
-def summarize_benchmark(tpcds_pid, tpch_pid):
+def summarize_benchmark(iamconnectioninfo, tpcds_pid, tpch_pid):
 
     if tpcds_pid is not None or tpch_pid is not None:
-        iamconnectioninfo = IamConnection()
         with connect(database=iamconnectioninfo.db,
                      host=iamconnectioninfo.hostname_plus_port,
                      user=iamconnectioninfo.username,
@@ -97,8 +96,9 @@ def summarize_benchmark(tpcds_pid, tpch_pid):
                         )
 
 
-def autorun_benchmark(tpc_benchmark, working_dir, streams, task_uuid, postgres_writer_queue):
-        iamconnectioninfo = IamConnection()
+
+def autorun_benchmark(iamconnectioninfo, tpc_benchmark, working_dir, streams, task_uuid,
+                      postgres_writer_queue):
         stream = list(streams)[0]
         scale = getattr(iamconnectioninfo,tpc_benchmark)
         schema = f'{tpc_benchmark}_{scale}'
@@ -183,8 +183,7 @@ def load_ddl(iamconnectioninfo, working_dir):
 
 
 
-def load_tpcds(num_worker_process, task_uuid, tables_already_loaded):
-    iamconnectioninfo = IamConnection()
+def load_tpcds(iamconnectioninfo, num_worker_process, task_uuid, tables_already_loaded):
     data_set = 'tpcds'
     tpcds_tables = [
         'store_sales', 'catalog_sales', 'web_sales', 'web_returns',
@@ -227,8 +226,7 @@ def load_tpcds(num_worker_process, task_uuid, tables_already_loaded):
     tpcds_table_queue.join()
 
 
-def load_tpch(num_worker_process, task_uuid, tables_already_loaded):
-    iamconnectioninfo = IamConnection()
+def load_tpch(iamconnectioninfo, num_worker_process, task_uuid, tables_already_loaded):
     data_set = 'tpch'
     tpch_tables = [
         'nation', 'region', 'part', 'supplier', 'partsupp', 'customer',
@@ -268,6 +266,7 @@ def load_tpch(num_worker_process, task_uuid, tables_already_loaded):
 
 
 def load_worker(queue, data_set, task_uuid):
+
     while True:
         tbl = queue.get()
         print('Processing %s (MP: %s) ' % (tbl, mp.current_process().name))
@@ -335,7 +334,7 @@ def pg_writer(queue):
         queue.task_done()
 
 
-def validate_rowcounts(iamconnectioninfo, tpcds_scale, tpch_scale):
+def validate_rowcounts(iamconnectioninfo,tpcds_scale,tpch_scale):
     tables_matched_rowcounts = {}
     if tpcds_scale != '' or tpch_scale != '':
         # check if schema exists
@@ -396,11 +395,9 @@ def benchmark_auto_run():
     iamconnectioninfo = IamConnection()
     tpcds_scale = iamconnectioninfo.tpcds.lower()
     tpch_scale = iamconnectioninfo.tpch.lower()
-    tpcds_autorun = iamconnectioninfo.tpcds_autorun
-    tpch_autorun = iamconnectioninfo.tpch_autorun
 
     # returns a dict containing keys tpcds/tpch , each with values being a list of table names with matching rowcounts per the postgres table benchmark_table_row_counts
-    matched_table_names = validate_rowcounts(iamconnectioninfo, tpcds_scale, tpch_scale)
+    matched_table_names = validate_rowcounts(iamconnectioninfo,tpcds_scale,tpch_scale)
 
     # local env for development
     if os.path.exists('/Users/bschur/derived-tpcds-tpch-benchmarks'):
@@ -409,28 +406,28 @@ def benchmark_auto_run():
         working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks'
 
     # load DDL. Includes both DDL in the postgres DB for monitoring as well as tpcds/tpcdh tables
-    if tpcds_scale != '' and tpch_scale != '':
+    if iamconnectioninfo.tpcds != '' and iamconnectioninfo.tpcds != '':
         load_ddl(iamconnectioninfo, working_dir)
 
     # load TPCDS
-    if tpcds_scale != '':
+    if iamconnectioninfo.tpcds != '':
         num_tpcds_workers = 2
         task_status = {'type': 'insert', 'sql': {'task_name': 'load_tpcds', 'task_version': '1.0',
                                                  'task_path': '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts/benchmark-load-runner.py',
                                                  'task_concurrency': num_tpcds_workers, 'task_status': 'inflight', }}
         task_uuid = update_task_status(task_status)
-        load_tpcds(num_tpcds_workers, task_uuid, matched_table_names)
+        load_tpcds(iamconnectioninfo, num_tpcds_workers, task_uuid, matched_table_names)
         task_status = {'type': 'update', 'uuid': task_uuid, 'sql': {'task_status': 'complete', }}
         update_task_status(task_status)
 
     # load TPCH
-    if tpch_scale != '':
+    if iamconnectioninfo.tpch != '':
         num_tpch_workers = 2
         task_status = {'type': 'insert', 'sql': {'task_name': 'load_tpch', 'task_version': '1.0',
                                                  'task_path': '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts/benchmark-load-runner.py',
                                                  'task_concurrency': num_tpch_workers, 'task_status': 'inflight', }}
         task_uuid = update_task_status(task_status)
-        load_tpch(num_tpch_workers, task_uuid, matched_table_names)
+        load_tpch(iamconnectioninfo, num_tpch_workers, task_uuid, matched_table_names)
         task_status = {'type': 'update', 'uuid': task_uuid, 'sql': {'task_status': 'complete', }}
         update_task_status(task_status)
 
@@ -459,25 +456,26 @@ def benchmark_auto_run():
     tpch_pid = None
 
     # autorun TPCDS
-    if tpcds_autorun and tpcds_scale != '':
+    if iamconnectioninfo.tpcds_autorun and iamconnectioninfo.tpcds != '':
         task_status = {'type': 'insert', 'sql': {'task_name': 'run_tpcds', 'task_version': '1.0',
                                                  'task_path': '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts/benchmark-load-runner.py',
                                                  'task_concurrency': 1, 'task_status': 'inflight', }}
         task_uuid = update_task_status(task_status)
-        tpcds_pid = autorun_benchmark('tpcds', working_dir, streams, task_uuid, postgres_writer_queue)
+        tpcds_pid = autorun_benchmark(iamconnectioninfo, 'tpcds', working_dir,
+                                      streams, task_uuid, postgres_writer_queue)
         task_status = {'type': 'update', 'uuid': task_uuid, 'sql': {'task_status': 'complete', }}
         update_task_status(task_status)
 
     # autorun TPCH
-    if tpch_autorun and tpch_scale != '':
+    if iamconnectioninfo.tpch_autorun and iamconnectioninfo.tpch != '':
         task_status = {'type': 'insert', 'sql': {'task_name': 'run_tpch', 'task_version': '1.0',
                                                  'task_path': '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts/benchmark-load-runner.py',
                                                  'task_concurrency': 1, 'task_status': 'inflight', }}
         task_uuid = update_task_status(task_status)
-        tpch_pid = autorun_benchmark('tpch', working_dir, streams, task_uuid, postgres_writer_queue)
+        tpch_pid = autorun_benchmark(iamconnectioninfo, 'tpch', working_dir, streams, task_uuid, postgres_writer_queue)
         task_status = {'type': 'update', 'uuid': task_uuid, 'sql': {'task_status': 'complete', }}
         update_task_status(task_status)
 
     postgres_writer_queue.join()
 
-    summarize_benchmark(tpcds_pid, tpch_pid)
+    summarize_benchmark(iamconnectioninfo, tpcds_pid, tpch_pid)
