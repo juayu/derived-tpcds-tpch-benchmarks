@@ -171,7 +171,8 @@ def load_ddl(iamconnectioninfo, working_dir):
 
 
 
-def load_tpcds(iamconnectioninfo, num_worker_process, task_uuid, tables_already_loaded):
+def load_tpcds(num_worker_process, task_uuid, tables_already_loaded):
+    iamconnectioninfo = IamConnection()
     data_set = 'tpcds'
     tpcds_tables = [
         'store_sales', 'catalog_sales', 'web_sales', 'web_returns',
@@ -214,7 +215,8 @@ def load_tpcds(iamconnectioninfo, num_worker_process, task_uuid, tables_already_
     tpcds_table_queue.join()
 
 
-def load_tpch(iamconnectioninfo, num_worker_process, task_uuid, tables_already_loaded):
+def load_tpch(num_worker_process, task_uuid, tables_already_loaded):
+    iamconnectioninfo = IamConnection()
     data_set = 'tpch'
     tpch_tables = [
         'nation', 'region', 'part', 'supplier', 'partsupp', 'customer',
@@ -387,6 +389,7 @@ def benchmark_auto_run():
     tpcds_autorun = iamconnectioninfo.tpcds_autorun
     tpch_autorun = iamconnectioninfo.tpch_autorun
 
+    working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks'
 
     # populate postgres DB with rowcounts needed for validation
     create_rowcounts(working_dir)
