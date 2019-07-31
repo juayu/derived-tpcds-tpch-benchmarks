@@ -123,10 +123,10 @@ def autorun_benchmark(tpc_benchmark, working_dir, streams, task_uuid,
                 num_queries = 22
             for i in range(1, num_queries + 1):
                 query = streams[stream][i - 1]
-                query_tpl = f'{query}.tpl'
+                query_sql = f'{query}.sql'
                 sql_path = f'{working_dir}/{tpc_benchmark}/streams/{scale}/{stream}/0.query{query}.sql'
                 sql = open(sql_path, 'r').read()
-                exec_info = dict(type='insert',task_uuid=task_uuid,client_starttime=f'to_timestamp({time.time()})',sql_path=sql_path,pid=autorun_pid,stream=stream,stream_ident=i,query=query_tpl,tpc_benchmark=tpc_benchmark,scale=scale)
+                exec_info = dict(type='insert',task_uuid=task_uuid,client_starttime=f'to_timestamp({time.time()})',sql_path=sql_path,pid=autorun_pid,stream=stream,stream_ident=i,query=query_sql,tpc_benchmark=tpc_benchmark,scale=scale)
                 postgres_writer_queue.put(exec_info)
                 cursor.execute(f"set query_group to '{query_sql}';{sql}")
                 exec_info = dict(type='update',task_uuid=task_uuid,stream_ident=i,client_endtime=f'to_timestamp({time.time()})',)
