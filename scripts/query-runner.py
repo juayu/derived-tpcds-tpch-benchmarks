@@ -111,8 +111,6 @@ def run_benchmark(stream, sequence, task_uuid, inp_json):
     schema = f"{tpc_benchmark}_{scale}"
     working_dir = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks'
 
-def tpcds(inp_json):
-    # This is just to show how to connect once in the function
     iamconnectioninfo = IamConnection()
     with connect(database=iamconnectioninfo.db,
                  host=iamconnectioninfo.hostname_plus_port,
