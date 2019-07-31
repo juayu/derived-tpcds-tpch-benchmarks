@@ -9,8 +9,11 @@ from benchmark_streams import streams
 from iamconnectioninfo import IamConnection
 from pgdb import connect
 
-
 class CursorByName():
+    """Use description to map column index to name per PEP 249"""
+    def __init__(self, cursor):
+        self._cursor = cursor
+
     def __iter__(self):
         return self
 
