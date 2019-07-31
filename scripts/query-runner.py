@@ -3,6 +3,7 @@ import socket
 import os
 import json
 import time
+import uuid
 from benchmarkloadrunner import benchmark_auto_run
 from benchmark_streams import streams
 from iamconnectioninfo import IamConnection
@@ -223,12 +224,16 @@ if __name__ == '__main__':
 
     serversocket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     serversocket.bind(f'{path}/queryrunner.socket')
+    serversocket.listen()
 
-    # queue up to 10 socket connections
-    serversocket.listen(10)
-
+    manager = mp.Manager()
+    proc_dict = manager.dict()
+    postgres_writer_queue = manager.Queue()
     # define input queues
-    inp_queue = mp.JoinableQueue()
+    pool = mp.Pool(processes=40)
+    pool.apply_async(postgres_writer)
+    # queue for determining if an inflight task is done
+    worker_queue = mp.SimpleQueue()
 
     while True:
         clientsocket, addr = serversocket.accept()
