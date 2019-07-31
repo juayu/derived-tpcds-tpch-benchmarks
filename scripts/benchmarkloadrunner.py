@@ -99,8 +99,9 @@ def summarize_benchmark(iamconnectioninfo, tpcds_pid, tpch_pid):
 
 
 
-def autorun_benchmark(iamconnectioninfo, tpc_benchmark, working_dir, streams, task_uuid,
+def autorun_benchmark(tpc_benchmark, working_dir, streams, task_uuid,
                       postgres_writer_queue):
+        iamconnectioninfo = IamConnection()
         stream = list(streams)[0]
         scale = getattr(iamconnectioninfo,tpc_benchmark)
         schema = f'{tpc_benchmark}_{scale}'
