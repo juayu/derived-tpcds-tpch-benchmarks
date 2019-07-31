@@ -1,28 +1,12 @@
-import cachetools.func
+from cachetools.func import ttl_cache
 import boto3
-import sh
-import os
-try:
-    import botocore_amazon.monkeypatch
-    is_amzn = True
-    stack_name_path = '/Users/bschur/RedshiftGoldStandard/scripts/stackname.txt'
-except:
-    is_amzn = False
-    stack_name_path = '/home/ec2-user/SageMaker/Redshift/assets/metadata/stackname.txt'
-
 from botocore.client import ClientError
 
-if is_amzn is True:
-    GIT_ROOT = sh.git("rev-parse", "--show-toplevel").strip()
-    new_env = os.environ.copy()
-    os.environ["AWS_CONFIG_FILE"] = f'{GIT_ROOT}/aws.cfg'
-
-
-@cachetools.func.ttl_cache(maxsize=10, ttl=3530)
+@ttl_cache(maxsize=10, ttl=3530)
 class IamConnection:
     @classmethod
-    @cachetools.func.ttl_cache()
-    def __get_cluster_info(self, session):
+    @ttl_cache()
+    def __get_cluster_info(cls, session, stack_name_path):
         """
         :param session:
         Get information from describeClusters for use in IAM auth and identifying the endpoint/port/db
@@ -54,8 +38,8 @@ class IamConnection:
                 raise
 
     @classmethod
-    @cachetools.func.ttl_cache()
-    def __get_cluster_credentials(self, session, cluster_identifier, dbUser,
+    @ttl_cache()
+    def __get_cluster_credentials(cls, session, cluster_identifier, dbUser,
                                   dbName):
         """
         :param session:
@@ -91,8 +75,9 @@ class IamConnection:
     def __init__(self, cluster_identifier=None, master_user=None,
                  db_name=None):
 
+        stack_name_path = '/home/ec2-user/SageMaker/assets/metadata/stackname.txt'
         session = boto3.session.Session()
-        cluster_info = self.__get_cluster_info(session)
+        cluster_info = self.__get_cluster_info(session,stack_name_path)
 
         if cluster_identifier is None:
             cluster_identifier = f'{cluster_info["stack_name"]}-{cluster_info["short_uuid"]}'
@@ -110,13 +95,17 @@ class IamConnection:
         self.username = cluster_creds['username']
         self.hostname = cluster_info['hostname']
         self.port = cluster_info['port']
-        if is_amzn is True:
-            self.hostname = '3.222.16.97'
         self.hostname_plus_port = f'{self.hostname}:{self.port}'
         self.port = cluster_info['port']
         self.iamrole = cluster_info['iamrole']
         self.db = cluster_info['db_name']
-        self.tpcds = cluster_info['tpcds']
-        self.tpch = cluster_info['tpch']
+        if cluster_info['tpcds'] == '':
+            self.tpcds = None
+        else:
+            self.tpcds = cluster_info['tpcds']
+        if cluster_info['tpch'] == '':
+            self.tpch = None
+        else:
+            self.tpch = cluster_info['tpch']
         self.tpcds_autorun = cluster_info['autorun_tpcds']
         self.tpch_autorun = cluster_info['autorun_tpch']

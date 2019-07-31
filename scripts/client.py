@@ -2,7 +2,6 @@
 
 import socket
 import argparse
-import os
 import json
 from voluptuous import Schema, Required, All, Length, MultipleInvalid
 
@@ -23,17 +22,16 @@ except MultipleInvalid as e:
 
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 path = '/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts'
-if not os.path.exists(path):
-    path = '/Users/bschur/RedshiftGoldStandard/scripts'
 
 s.connect(f'{path}/queryrunner.socket')
 
 s.send(json_conf['json'].encode('UTF-8'))
 
-
 out_json = json.loads(json_conf['json'])
+
+# TODO: determine when it is appropriate for the runner to send messages back to the client.
 if out_json['function'] == 'status':
-    ret = s.recv(4096).decode()
+    ret = s.recv(16384).decode()
     print(ret)
 
 s.close()

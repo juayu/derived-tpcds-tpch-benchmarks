@@ -1,16 +1,6 @@
 #!/bin/bash
 
-
-# TODO: Remove when dev is done
-# Get stackname from notebook instance metadata to filter on Redshift stackname tag
-stackname_path='/home/ec2-user/SageMaker/Redshift/assets/metadata/stackname.txt'
-stackname_internal_path='/Users/bschur/RedshiftGoldStandard/scripts/stackname.txt'
-
-if [ -f $stackname_internal_path ]; then
-    stackname_path=$stackname_internal_path
-    is_internal=true
-fi
-
+stackname_path='/home/ec2-user/SageMaker/assets/metadata/stackname.txt'
 stackname=`head -n 1 $stackname_path`
 
 
@@ -18,12 +8,10 @@ if [  -z "$PGCONNECT_TIMEOUT"  ]; then
 	export PGCONNECT_TIMEOUT=10
 fi
 
-isIAM=true
-
 
 if [[ "$*" == *'--no-iam'* ]] ; then 
 	args="$*"
-	cmd="/usr/bin/psql ${args//--no-iam/}"
+	cmd="psql ${args//--no-iam/}"
     exec $cmd
 	exit 0
 else
@@ -38,12 +26,9 @@ database=$(echo $redshiftTags | jq -r 'select(.Key == "db_name").Value')
 port=$(echo $redshiftTags | jq -r 'select(.Key == "port").Value')
 clusterIdentifier="$cfmstack-$shortuuid"
 
-
 hostName=$(aws redshift describe-clusters --cluster-identifier $clusterIdentifier --query 'Clusters[*].Endpoint.Address' --output text)
 
-# TODO: add checks if connection attributes changed versus tagging 
 # TODO: Support all /usr/bin/psql arguments. Easiest to just strip away authentication parameters all of the time (except for --no-iam) and then just append arguments ( $* )
-# will still need to ta still assign hostname arg to a variable for use in looking up cluster identifier 
 
                 while [ "$#" -gt 0 ]; do
                   case "$1" in
@@ -71,14 +56,9 @@ hostName=$(aws redshift describe-clusters --cluster-identifier $clusterIdentifie
 
 clusterIdentifier=${hostName%%.*}
 
-# TODO: Remove when dev is done
-if [ "$is_internal" = true ]; then
-    hostName='3.222.16.97'
-    credstring=$(~/RedshiftGoldStandard/scripts/notebook/getclustercredentials.py $clusterIdentifier $userName $database)
-else
-    credstring=$(/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts/getclustercredentials.py $clusterIdentifier $userName $database)
-fi
+credstring=$(/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts/getclustercredentials.py $clusterIdentifier $userName $database)
 
+credstring=$(./getclustercredentials.py $clusterIdentifier $userName $database)
 
 IFS=' ' read -a arr <<< "$credstring"
 iamUser=${arr[0]}
@@ -91,13 +71,14 @@ iampassword=${arr[1]}
                         export PGPASSWORD=$iampassword
 
                         if [ -z "$file" ] && [ -z "$cmd" ]; then
-                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser $tuples
+                            psql -h $hostName -p $port -d $database -U $iamUser $tuples
                         elif [ ! -z "$file" ]  && [ -z "$cmd" ]; then
-                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --file="$file" $tuples
+							echo "2"
+                            psql -h $hostName -p $port -d $database -U $iamUser --file="$file" $tuples
 						elif [ -z "$file" ] && [ ! -z "$cmd" ]; then
-                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" $tuples 
+                            psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" $tuples 
 						else
-                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" --file="$file" $tuples
+                            psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" --file="$file" $tuples
 						fi
                 fi
 fi
