@@ -168,12 +168,10 @@ def supported_functions():
 def postgres_writer():
     while True:
         msg = postgres_writer_queue.get()
-        print(msg)
         with connect(dbname='postgres',host='0.0.0.0',user='postgres') as conn:
             cursor = conn.cursor()
             if msg["type"] == 'insert':
                 sql = f"""INSERT INTO benchmark_query_status(task_uuid,tpc_benchmark,scale,stream,pid,query_order_in_stream,benchmark_query_template,template_file_path,client_starttime) values('{msg["task_uuid"]}','{msg["tpc_benchmark"]}','{msg["scale"]}','{msg["stream"]}','{msg["pid"]}','{msg["stream_ident"]}','{msg["query"]}','{msg["sql_path"]}',{msg["client_starttime"]})"""
-                print(sql)
                 cursor.execute(sql)
             if msg["type"] == 'update':
                 cursor.execute(
