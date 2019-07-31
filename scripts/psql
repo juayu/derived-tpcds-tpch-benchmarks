@@ -58,8 +58,6 @@ clusterIdentifier=${hostName%%.*}
 
 credstring=$(/home/ec2-user/SageMaker/derived-tpcds-tpch-benchmarks/scripts/getclustercredentials.py $clusterIdentifier $userName $database)
 
-credstring=$(./getclustercredentials.py $clusterIdentifier $userName $database)
-
 IFS=' ' read -a arr <<< "$credstring"
 iamUser=${arr[0]}
 iampassword=${arr[1]}
@@ -71,14 +69,13 @@ iampassword=${arr[1]}
                         export PGPASSWORD=$iampassword
 
                         if [ -z "$file" ] && [ -z "$cmd" ]; then
-                            psql -h $hostName -p $port -d $database -U $iamUser $tuples
+                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser $tuples
                         elif [ ! -z "$file" ]  && [ -z "$cmd" ]; then
-							echo "2"
-                            psql -h $hostName -p $port -d $database -U $iamUser --file="$file" $tuples
+                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --file="$file" $tuples
 						elif [ -z "$file" ] && [ ! -z "$cmd" ]; then
-                            psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" $tuples 
+                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" $tuples
 						else
-                            psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" --file="$file" $tuples
+                            /usr/bin/psql -h $hostName -p $port -d $database -U $iamUser --command="$cmd" --file="$file" $tuples
 						fi
                 fi
 fi
