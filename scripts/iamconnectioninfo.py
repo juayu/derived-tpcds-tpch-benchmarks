@@ -31,7 +31,10 @@ class IamConnection:
             stack_name = open(stack_name_path, 'r').readline().rstrip('\n')
             response = client.describe_clusters(TagKeys=['stack_name'],
                                                 TagValues=[stack_name])
+            print(response)
             hostname = response['Clusters'][0]['Endpoint']['Address']
+            # for cluster restored from snapshot, iamroles are not restored, and it will fail here
+            # need to manually apply iam role after restore
             iamrole = response['Clusters'][0]['IamRoles'][0]['IamRoleArn']
             tags = response['Clusters'][0]['Tags']
             tagMap = {'hostname': hostname, 'iamrole': iamrole}
